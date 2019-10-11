@@ -10,11 +10,14 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.widget.Button;
+import android.widget.Toast;
 
 import com.tbruyelle.rxpermissions.RxPermissions;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 import rx.functions.Action1;
 
@@ -28,7 +31,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private Button start;
     private Button stop;
+    private Button change;
     private Camera mCamera;
+
+    private boolean isBack = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,6 +46,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         stop = findViewById(R.id.stop);
         stop.setOnClickListener(this);
+
+        change = findViewById(R.id.change);
+        change.setOnClickListener(this);
 
         mSurfaceView = (SurfaceView) findViewById(R.id.videoView);
         mSurfaceHolder = mSurfaceView.getHolder();
@@ -59,7 +68,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         @Override
                         public void call(Boolean aBoolean) {
                             if(aBoolean){
-                                configRecord("test.mp4");
+                                configRecord(isBack);
                                 mRecorder.start();
                             }
                             else{
@@ -75,18 +84,26 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     mRecorder = null;
                 }
                 break;
+            case R.id.change:
+                isBack = ! isBack;
+                configRecord(isBack);
+                break;
         }
     }
 
-    private void configRecord(String fileName){
-        if(mCamera != null){
-            mCamera.stopPreview();
-            mCamera.release();
-            mCamera = null;
-        }
-        int cameraIndex  = findCamera(Camera.CameraInfo.CAMERA_FACING_BACK);
-        if(cameraIndex == -1)
+    private void configRecord(boolean flag){
+        releaseCamera();
+        int cameraIndex;
+        if(!flag){
             cameraIndex = findCamera(Camera.CameraInfo.CAMERA_FACING_FRONT);
+            if(cameraIndex == -1){
+                Toast.makeText(this,"打开前置摄像头失败，自动切换",Toast.LENGTH_SHORT).show();
+                cameraIndex = findCamera(Camera.CameraInfo.CAMERA_FACING_BACK);
+                isBack = !flag;
+            }
+        }else {
+            cameraIndex = findCamera(Camera.CameraInfo.CAMERA_FACING_BACK);
+        }
         mCamera = Camera.open(cameraIndex);
         mCamera.setDisplayOrientation(90);
         if(mRecorder == null)
@@ -101,7 +118,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mRecorder.setVideoSize(640,480);
         mRecorder.setVideoEncodingBitRate(900000);
         mRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
-        File f = new File(getExternalCacheDir(),fileName);
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyMMddHHmmss");
+        String fileName = simpleDateFormat.format(new Date());
+        File f = new File(getExternalCacheDir(),fileName + ".mp4");
         String mOutPath = f.getAbsolutePath();
         if(f.exists())
             f.delete();
@@ -128,5 +147,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 return index;
         }
         return -1;
+    }
+    private void releaseCamera(){
+        if(mCamera != null){
+            mCamera.stopPreview();
+            mCamera.release();
+            mCamera = null;
+        }
     }
 }
