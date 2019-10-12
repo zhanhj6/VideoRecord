@@ -31,12 +31,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private SurfaceHolder mSurfaceHolder;
     private MediaRecorder mRecorder;
 
-    private Button start;
-    private Button stop;
-    private Button change;
+    private Button start;//开始拍摄按钮
+    private Button stop;//结束拍摄按钮
+    private Button change;//切换摄像头按钮
     private Camera mCamera;
 
-    private boolean isBack = false;
+    private boolean isBack = false;//后置摄像头的标志
+    private boolean isRecording = false;//正在录像的标志
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,14 +65,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onClick(View v) {
         switch (v.getId()){
             case R.id.start:
+                isRecording = true;
                 if(mCamera == null){
-                    changeCamera();
+                    initCamera();
                     mCamera.setDisplayOrientation(90);
                 }
                 configRecord();
                 mRecorder.start();
                 break;
             case R.id.stop:
+                isRecording = false;
                 if(mRecorder != null){
                     mRecorder.stop();
                     mRecorder.release();
@@ -79,8 +82,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 }
                 break;
             case R.id.change:
-                isBack = !isBack;
-                changeCamera();
+                if(isRecording){
+                    Toast.makeText(this,"正在录像，无法切换",Toast.LENGTH_SHORT).show();
+                }else{
+                    isBack = !isBack;
+                    initCamera();
+                }
                 break;
         }
     }
@@ -120,6 +127,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
+        //获取运行时权限
         RxPermissions.getInstance(MainActivity.this)
                 .request(Manifest.permission.CAMERA
                         ,Manifest.permission.RECORD_AUDIO
@@ -128,7 +136,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     @Override
                     public void call(Boolean aBoolean) {
                         if(aBoolean){
-                            changeCamera();
+                            initCamera();
                         }else {
                             Log.d(TAG, "call: 444");
                             finish();
@@ -150,7 +158,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         Log.d(TAG, "surfaceDestroyed: 333");
     }
 
-    private void changeCamera(){
+    //初始化摄像头
+    private void initCamera(){
         if(mCamera!=null){
             mCamera.stopPreview();
         }
