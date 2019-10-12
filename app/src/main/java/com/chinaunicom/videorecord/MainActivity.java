@@ -58,19 +58,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mSurfaceHolder.addCallback(this);
         mSurfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
         mSurfaceHolder.setKeepScreenOn(true);
-
-        RxPermissions.getInstance(MainActivity.this)
-                .request(Manifest.permission.CAMERA
-                        ,Manifest.permission.RECORD_AUDIO
-                        ,Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                .subscribe(new Action1<Boolean>() {
-                    @Override
-                    public void call(Boolean aBoolean) {
-                        if(!aBoolean){
-                            finish();
-                        }
-                    }
-                });
     }
 
     @Override
@@ -133,7 +120,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
-        changeCamera();
+        RxPermissions.getInstance(MainActivity.this)
+                .request(Manifest.permission.CAMERA
+                        ,Manifest.permission.RECORD_AUDIO
+                        ,Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                .subscribe(new Action1<Boolean>() {
+                    @Override
+                    public void call(Boolean aBoolean) {
+                        if(aBoolean){
+                            changeCamera();
+                        }else {
+                            Log.d(TAG, "call: 444");
+                            finish();
+                        }
+                    }
+                });
         Log.d(TAG, "surfaceCreated: 111");
     }
 
