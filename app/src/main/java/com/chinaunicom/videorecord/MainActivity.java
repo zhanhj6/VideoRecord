@@ -39,6 +39,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private boolean isBack = false;//后置摄像头的标志
     private boolean isRecording = false;//正在录像的标志
 
+
+    Camera.AutoFocusCallback myAutoFocusCallback = null;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -59,6 +62,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mSurfaceHolder.addCallback(this);
         mSurfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
         mSurfaceHolder.setKeepScreenOn(true);
+        //自动聚焦变量回调
+        myAutoFocusCallback = new Camera.AutoFocusCallback() {
+            @Override
+            public void onAutoFocus(boolean success, Camera camera) {
+                if(success){
+                    camera.cancelAutoFocus();
+                    doAutoFocus();
+                }
+            }
+        };
+    }
+
+    private void doAutoFocus() {
     }
 
     @Override
@@ -76,7 +92,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             case R.id.stop:
                 isRecording = false;
                 if(mRecorder != null){
-                    mRecorder.stop();
+                    try {
+                        mRecorder.setOnErrorListener(null);
+                        mRecorder.setOnInfoListener(null);
+                        mRecorder.setPreviewDisplay(null);
+                        mRecorder.stop();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        Toast.makeText(this,"时间过短，请重新录制",Toast.LENGTH_SHORT).show();
+                    }
                     mRecorder.release();
                     mRecorder = null;
                 }
@@ -93,8 +117,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void configRecord(){
-        if(mRecorder == null)
+        if(mRecorder == null) {
             mRecorder = new MediaRecorder();
+        }
         mRecorder.reset();
         mCamera.unlock();
         mRecorder.setCamera(mCamera);
@@ -138,31 +163,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         if(aBoolean){
                             initCamera();
                         }else {
-                            Log.d(TAG, "call: 444");
                             finish();
                         }
                     }
                 });
-        Log.d(TAG, "surfaceCreated: 111");
     }
 
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
 //        mCamera.startPreview();
-        Log.d(TAG, "surfaceChanged: 222");
     }
 
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
         CameraUtil.releaseCamera(mCamera);
-        Log.d(TAG, "surfaceDestroyed: 333");
     }
 
     //初始化摄像头
     private void initCamera(){
-        if(mCamera!=null){
-            mCamera.stopPreview();
-        }
         CameraUtil.releaseCamera(mCamera);
         int cameraIndex;
         if(!isBack){
@@ -172,7 +190,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 cameraIndex = CameraUtil.findCamera(Camera.CameraInfo.CAMERA_FACING_BACK);
             }
         }
-        else cameraIndex = CameraUtil.findCamera(Camera.CameraInfo.CAMERA_FACING_BACK);
+        else {
+            cameraIndex = CameraUtil.findCamera(Camera.CameraInfo.CAMERA_FACING_BACK);
+            if(cameraIndex == -1){
+                Toast.makeText(this,"打开后置摄像头失败，自动切换",Toast.LENGTH_SHORT).show();
+                cameraIndex = CameraUtil.findCamera(Camera.CameraInfo.CAMERA_FACING_FRONT);
+            }
+        }
         mCamera = CameraUtil.createCamera(cameraIndex);
         mCamera.setDisplayOrientation(90);
         try {
@@ -180,6 +204,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         } catch (IOException e) {
             e.printStackTrace();
         }
+        //自动对焦
+        mCamera.autoFocus(myAutoFocusCallback);
+        mCamera.cancelAutoFocus();
         mCamera.startPreview();
     }
 }
